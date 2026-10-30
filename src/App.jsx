@@ -6,21 +6,40 @@ import {
   fetchConversation,
   fetchMessages,
   createNewConversation,
+  deleteConversation,
   getModels,
 } from "./api/client";
+import DeleteConfirmModal from "./components/chat/DeleteConfirmModal";
 
 
 export default function App() {
-  const [model, setModel] = useState("gemma4:e4b");
-  const [models, setModels] = useState(["gemma4:e4b"]);
+  const [model, setModel] = useState(() => {
+    try {
+      return localStorage.getItem("selected_model") || "gemini-3.5-flash";
+    } catch {
+      return "gemini-3.5-flash";
+    }
+  });
+  const [models, setModels] = useState([]);
+  const [modelsByProvider, setModelsByProvider] = useState({});
   const [selectedConversationId, setSelectedConversationId] = useState("");
   const [conversations, setConversations] = useState([]);
   const [messages, setMessages] = useState([]);
   const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth > 768);
-  const [darkMode, setDarkMode] = useState(false);
+  const [darkMode, setDarkMode] = useState(() => {
+    try {
+      const saved = localStorage.getItem("theme");
+      if (saved) return saved === "dark";
+      return window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+    } catch {
+      return false;
+    }
+  });
   const [modelsLoaded, setModelsLoaded] = useState(false);
   const [conversationsLoaded, setConversationsLoaded] = useState(false);
   const [initializationError, setInitializationError] = useState("");
+  const [deleteTarget, setDeleteTarget] = useState(null); // { id, title }
+  const [isDeletingChat, setIsDeletingChat] = useState(false);
 
   const selectedConversation = conversations.find(
     (conversation) => conversation.id === selectedConversationId
@@ -29,13 +48,30 @@ export default function App() {
     selectedConversation?.title && selectedConversation.title !== "New Chat"
   );
 
-  /* ── Dark mode ── */
+  /* ── Dark mode sync & toggle ── */
+  useEffect(() => {
+    try {
+      document.documentElement.classList.toggle("dark", darkMode);
+      localStorage.setItem("theme", darkMode ? "dark" : "light");
+    } catch (e) {
+      console.warn("Could not save theme preference:", e);
+    }
+  }, [darkMode]);
+
   const toggleDark = () => {
-    setDarkMode((prev) => {
-      const next = !prev;
-      document.documentElement.classList.toggle("dark", next);
-      return next;
-    });
+    setDarkMode((prev) => !prev);
+  };
+
+  /* ── Model preference setter ── */
+  const handleSetModel = (newModel) => {
+    setModel(newModel);
+    try {
+      if (newModel) {
+        localStorage.setItem("selected_model", newModel);
+      }
+    } catch (e) {
+      console.warn("Could not save model preference:", e);
+    }
   };
 
   /* ── Load models ── */
@@ -44,10 +80,22 @@ export default function App() {
     getModels()
       .then((data) => {
         if (!isMounted) return;
+        setModelsByProvider(data || {});
         const all = Object.values(data || {}).flat();
         if (all && all.length > 0) {
           setModels(all);
-          setModel(all[0]);
+          try {
+            const savedModel = localStorage.getItem("selected_model");
+            if (savedModel && all.includes(savedModel)) {
+              setModel(savedModel);
+            } else if (!all.includes(model)) {
+              setModel(all[0]);
+            }
+          } catch {
+            if (!all.includes(model)) {
+              setModel(all[0]);
+            }
+          }
         }
       })
       .catch((error) => {
@@ -153,6 +201,60 @@ export default function App() {
     setSelectedConversationId(id);
   };
 
+  /* ── Delete Conversation Handlers ── */
+  const handleRequestDelete = (conv) => {
+    if (!conv) return;
+    setDeleteTarget({ id: conv.id, title: conv.title || "New Chat" });
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget?.id) return;
+    setIsDeletingChat(true);
+    try {
+      try {
+        await deleteConversation(deleteTarget.id);
+      } catch (err) {
+        console.warn("deleteConversation backend notice:", err);
+      }
+
+      const remaining = conversations.filter((c) => c.id !== deleteTarget.id);
+
+      if (selectedConversationId === deleteTarget.id) {
+        if (remaining.length > 0) {
+          handleSetSelectedConversationId(remaining[0].id);
+          setConversations(remaining);
+        } else {
+          // If the last chat was deleted, seamlessly create a fresh conversation
+          try {
+            const newConv = await createNewConversation();
+            if (newConv && newConv.id) {
+              setConversations([newConv]);
+              handleSetSelectedConversationId(newConv.id);
+            } else {
+              const fallbackId = `conv-${Date.now()}`;
+              const fallbackObj = { id: fallbackId, title: "New Chat", created_at: new Date().toISOString() };
+              setConversations([fallbackObj]);
+              handleSetSelectedConversationId(fallbackId);
+            }
+          } catch (createErr) {
+            console.error("Failed to create new conversation after delete:", createErr);
+            const fallbackId = `conv-${Date.now()}`;
+            const fallbackObj = { id: fallbackId, title: "New Chat", created_at: new Date().toISOString() };
+            setConversations([fallbackObj]);
+            handleSetSelectedConversationId(fallbackId);
+          }
+        }
+      } else {
+        setConversations(remaining);
+      }
+      setDeleteTarget(null);
+    } catch (err) {
+      console.error("Error during deletion:", err);
+    } finally {
+      setIsDeletingChat(false);
+    }
+  };
+
   // Readiness condition: active model and selected conversation ID exist
   const isReady = Boolean(model && selectedConversationId);
 
@@ -163,6 +265,12 @@ export default function App() {
         setConversations={setConversations}
         selectedConversationId={selectedConversationId}
         setSelectedConversationId={handleSetSelectedConversationId}
+        onRequestDelete={handleRequestDelete}
+        onTitleUpdate={(convId, title) => {
+          setConversations((prev) =>
+            prev.map((c) => (c.id === convId ? { ...c, title } : c))
+          );
+        }}
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
       />
@@ -172,10 +280,16 @@ export default function App() {
           onToggleSidebar={() => setSidebarOpen((o) => !o)}
           sidebarOpen={sidebarOpen}
           model={model}
-          setModel={setModel}
+          setModel={handleSetModel}
           models={models}
+          modelsByProvider={modelsByProvider}
           darkMode={darkMode}
           toggleDark={toggleDark}
+          conversationTitle={selectedConversation?.title}
+          selectedConversationId={selectedConversationId}
+          onDeleteCurrentChat={() =>
+            handleRequestDelete(selectedConversation || { id: selectedConversationId, title: "New Chat" })
+          }
         />
 
         <ChatWindow
@@ -184,7 +298,7 @@ export default function App() {
           setMessages={setMessages}
           selectedConversationId={selectedConversationId}
           model={model}
-          setModel={setModel}
+          setModel={handleSetModel}
           isReady={isReady}
           initializationError={initializationError}
           isTitled={isTitled}
@@ -195,6 +309,14 @@ export default function App() {
           }}
         />
       </div>
+
+      <DeleteConfirmModal
+        isOpen={Boolean(deleteTarget)}
+        conversationTitle={deleteTarget?.title}
+        onConfirm={handleConfirmDelete}
+        onCancel={() => !isDeletingChat && setDeleteTarget(null)}
+        isDeleting={isDeletingChat}
+      />
     </div>
   );
 }

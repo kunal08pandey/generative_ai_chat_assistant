@@ -142,6 +142,19 @@ export async function fetchMessages(conversationId) {
   return fetchAllPages(`/messages/${conversationId}`, 200);
 }
 
+export async function deleteMessage(messageId, conversationId = null) {
+  const endpoint = conversationId
+    ? `/conversations/${conversationId}/messages/${messageId}`
+    : `/messages/${messageId}`;
+  const res = await fetch(`${API_BASE}${endpoint}`, {
+    method: "DELETE",
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.error?.message || errorData.detail || `Server error: ${res.status}`);
+  }
+}
+
 export async function createNewConversation() {
   const endpoint = "/conversations";
   const res = await fetch(`${API_BASE}${endpoint}`, {
@@ -179,6 +192,13 @@ export async function rollbackConversation(conversationId) {
   return await handleResponse(res);
 }
 
+export async function rollbackToMessage(conversationId, messageId) {
+  const res = await fetch(`${API_BASE}/conversations/${conversationId}/rollback-to/${messageId}`, {
+    method: "POST",
+  });
+  return await handleResponse(res);
+}
+
 export async function clearAllConversations() {
   const res = await fetch(`${API_BASE}/conversations`, {
     method: "DELETE",
@@ -187,10 +207,12 @@ export async function clearAllConversations() {
 }
 
 export async function generateImage(prompt, model, conversationId) {
+  const isGemini = (model || "").toLowerCase().includes("gemini") || (model || "").toLowerCase().includes("argon");
+  const effectiveModel = isGemini ? model : "x/flux2-klein";
   const res = await fetch(`${API_BASE}/generate-image`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ prompt, model: model || "x/flux2-klein", conversation_id: conversationId }),
+    body: JSON.stringify({ prompt, model: effectiveModel, conversation_id: conversationId }),
   });
   return await handleResponse(res);
 }

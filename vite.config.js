@@ -14,6 +14,7 @@ export default defineConfig({
       '/upload': 'http://127.0.0.1:8000',
       '/conversations': 'http://127.0.0.1:8000',
       '/messages': 'http://127.0.0.1:8000',
+      '/export': 'http://127.0.0.1:8000',
       '/health': 'http://127.0.0.1:8000',
     },
   },

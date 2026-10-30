@@ -1,16 +1,35 @@
-import { useState } from "react";
-import { createNewConversation, deleteConversation, clearAllConversations } from "../api/client";
-import { MessageSquare, Search, Plus, Sparkles, Trash2, RotateCcw } from "lucide-react";
+import { useState, useRef } from "react";
+import {
+    createNewConversation,
+    deleteConversation,
+    clearAllConversations,
+    updateConversationTitle,
+} from "../api/client";
+import {
+    MessageSquare,
+    Search,
+    Plus,
+    Sparkles,
+    Trash2,
+    RotateCcw,
+    Pencil,
+    Check,
+    X,
+} from "lucide-react";
 
 export default function Sidebar({
     conversations,
     setConversations,
     selectedConversationId,
     setSelectedConversationId,
+    onRequestDelete,
+    onTitleUpdate,
     isOpen,
     onClose,
 }) {
     const [search, setSearch] = useState("");
+    const [editingId, setEditingId] = useState(null);
+    const [editTitle, setEditTitle] = useState("");
 
     async function createNewChat() {
         const response = await createNewConversation();
@@ -22,14 +41,38 @@ export default function Sidebar({
 
     async function deleteChat(event, conversationId) {
         event.stopPropagation();
-        await deleteConversation(conversationId);
-        setConversations((previous) => {
-            const remaining = previous.filter((conversation) => conversation.id !== conversationId);
-            if (selectedConversationId === conversationId) {
-                setSelectedConversationId(remaining[0]?.id || "");
+        try {
+            await deleteConversation(conversationId);
+        } catch (err) {
+            console.warn("deleteConversation warning:", err);
+        }
+        const remaining = conversations.filter((conversation) => conversation.id !== conversationId);
+        if (selectedConversationId === conversationId) {
+            if (remaining.length > 0) {
+                setSelectedConversationId(remaining[0].id);
+                setConversations(remaining);
+            } else {
+                try {
+                    const newConv = await createNewConversation();
+                    if (newConv && newConv.id) {
+                        setConversations([newConv]);
+                        setSelectedConversationId(newConv.id);
+                    } else {
+                        const fallbackId = `conv-${Date.now()}`;
+                        const fallbackObj = { id: fallbackId, title: "New Chat", created_at: new Date().toISOString() };
+                        setConversations([fallbackObj]);
+                        setSelectedConversationId(fallbackId);
+                    }
+                } catch {
+                    const fallbackId = `conv-${Date.now()}`;
+                    const fallbackObj = { id: fallbackId, title: "New Chat", created_at: new Date().toISOString() };
+                    setConversations([fallbackObj]);
+                    setSelectedConversationId(fallbackId);
+                }
             }
-            return remaining;
-        });
+        } else {
+            setConversations(remaining);
+        }
     }
 
     async function handleClearAll() {
@@ -46,6 +89,41 @@ export default function Sidebar({
             }
         } catch (err) {
             console.error("Error clearing conversations:", err);
+        }
+    }
+
+    function startRename(event, conv) {
+        event.stopPropagation();
+        setEditingId(conv.id);
+        setEditTitle(conv.title || "New Chat");
+    }
+
+    async function handleSaveRename(convId) {
+        const trimmed = editTitle.trim();
+        if (!trimmed) {
+            setEditingId(null);
+            return;
+        }
+        setEditingId(null);
+        try {
+            await updateConversationTitle(convId, trimmed);
+            setConversations((prev) =>
+                prev.map((c) => (c.id === convId ? { ...c, title: trimmed } : c))
+            );
+            if (onTitleUpdate) {
+                onTitleUpdate(convId, trimmed);
+            }
+        } catch (err) {
+            console.error("Failed to rename conversation:", err);
+        }
+    }
+
+    function handleRenameKeyDown(event, convId) {
+        if (event.key === "Enter") {
+            event.preventDefault();
+            handleSaveRename(convId);
+        } else if (event.key === "Escape") {
+            setEditingId(null);
         }
     }
 
@@ -117,20 +195,78 @@ export default function Sidebar({
                             key={conv.id}
                             className={`conversation-item ${selectedConversationId === conv.id ? "active" : ""}`}
                             onClick={() => {
-                                setSelectedConversationId(conv.id);
-                                if (onClose && window.innerWidth <= 768) onClose();
+                                if (editingId !== conv.id) {
+                                    setSelectedConversationId(conv.id);
+                                    if (onClose && window.innerWidth <= 768) onClose();
+                                }
                             }}
                         >
-                            <MessageSquare />
-                            <span className="conv-title">{conv.title || "Untitled"}</span>
-                            <button
-                                className="delete-conversation-btn"
-                                onClick={(event) => deleteChat(event, conv.id).catch(console.error)}
-                                title="Delete conversation"
-                                aria-label={`Delete ${conv.title || "conversation"}`}
-                            >
-                                <Trash2 />
-                            </button>
+                            {editingId === conv.id ? (
+                                <div className="conv-rename-wrapper" onClick={(e) => e.stopPropagation()}>
+                                    <input
+                                        type="text"
+                                        className="conv-rename-input"
+                                        value={editTitle}
+                                        onChange={(e) => setEditTitle(e.target.value)}
+                                        onKeyDown={(e) => handleRenameKeyDown(e, conv.id)}
+                                        autoFocus
+                                    />
+                                    <button
+                                        type="button"
+                                        className="conv-action-btn check"
+                                        onClick={() => handleSaveRename(conv.id)}
+                                        title="Save title"
+                                    >
+                                        <Check size={13} />
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className="conv-action-btn cancel"
+                                        onClick={() => setEditingId(null)}
+                                        title="Cancel"
+                                    >
+                                        <X size={13} />
+                                    </button>
+                                </div>
+                            ) : (
+                                <>
+                                    <MessageSquare />
+                                    <span
+                                        className="conv-title"
+                                        title="Double click to rename"
+                                        onDoubleClick={(e) => startRename(e, conv)}
+                                    >
+                                        {conv.title || "Untitled"}
+                                    </span>
+                                    <div className="conv-item-actions">
+                                        <button
+                                            className="conv-action-btn rename-btn"
+                                            onClick={(e) => startRename(e, conv)}
+                                            title="Rename chat"
+                                            aria-label={`Rename ${conv.title || "conversation"}`}
+                                            type="button"
+                                        >
+                                            <Pencil size={12} />
+                                        </button>
+                                        <button
+                                            className="delete-conversation-btn"
+                                            onClick={(event) => {
+                                                event.stopPropagation();
+                                                if (onRequestDelete) {
+                                                    onRequestDelete(conv);
+                                                } else {
+                                                    deleteChat(event, conv.id).catch(console.error);
+                                                }
+                                            }}
+                                            title={`Delete ${conv.title || "conversation"}`}
+                                            aria-label={`Delete ${conv.title || "conversation"}`}
+                                            type="button"
+                                        >
+                                            <Trash2 size={12} />
+                                        </button>
+                                    </div>
+                                </>
+                            )}
                         </div>
                     ))}
                     {filtered.length === 0 && search && (
