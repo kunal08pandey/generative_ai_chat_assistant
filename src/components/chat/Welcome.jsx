@@ -63,7 +63,7 @@ export default function WelcomeScreen({ onSuggestionClick }) {
   return (
     <div className="welcome-screen">
       <div className="welcome-icon">
-        <img src="/logo.jpg" alt="Kshitiz AI Labs Logo" className="welcome-logo-img" />
+        <img src="/logo.png" alt="Kshitiz AI Labs Logo" className="welcome-logo-img" />
       </div>
       <h2 className="welcome-title">How can I help you today?</h2>
       <p className="welcome-subtitle">

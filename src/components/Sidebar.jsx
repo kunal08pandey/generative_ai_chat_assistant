@@ -143,7 +143,7 @@ export default function Sidebar({
                 {/* Logo */}
                 <div className="sidebar-logo">
                     <div className="sidebar-logo-icon">
-                        <img src="/logo.jpg" alt="Kshitiz AI Labs" className="sidebar-logo-img" />
+                        <img src="/logo.png" alt="Kshitiz AI Labs" className="sidebar-logo-img" />
                     </div>
                     <span className="sidebar-logo-text">
                         Kshitiz <span>AI Labs</span>
