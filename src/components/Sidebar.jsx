@@ -143,10 +143,10 @@ export default function Sidebar({
                 {/* Logo */}
                 <div className="sidebar-logo">
                     <div className="sidebar-logo-icon">
-                        <Sparkles />
+                        <img src="/logo.jpg" alt="Kshitiz AI Labs" className="sidebar-logo-img" />
                     </div>
                     <span className="sidebar-logo-text">
-                        GEN <span>Labs</span>
+                        Kshitiz <span>AI Labs</span>
                     </span>
                 </div>
 
@@ -277,7 +277,7 @@ export default function Sidebar({
                 </div>
 
                 <div className="sidebar-footer">
-                    GEN Labs — Powered by Ollama
+                    Kshitiz AI Labs — Powered by Ollama
                 </div>
             </aside>
         </>

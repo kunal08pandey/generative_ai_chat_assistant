@@ -63,11 +63,11 @@ export default function WelcomeScreen({ onSuggestionClick }) {
   return (
     <div className="welcome-screen">
       <div className="welcome-icon">
-        <Sparkles />
+        <img src="/logo.jpg" alt="Kshitiz AI Labs Logo" className="welcome-logo-img" />
       </div>
       <h2 className="welcome-title">How can I help you today?</h2>
       <p className="welcome-subtitle">
-        I&apos;m your AI assistant powered by GEN Labs. Ask me anything — from
+        I&apos;m your AI assistant powered by Kshitiz AI Labs. Ask me anything — from
         coding and writing to analysis and creative work.
       </p>
 

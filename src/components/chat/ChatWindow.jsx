@@ -909,7 +909,7 @@ export default function ChatWindow({
                             accept=".pdf,.docx,.txt,.xlsx,.xls,image/*"
                         />
                         <span className="disclaimer">
-                            GEN Labs may produce inaccurate information. Verify important facts.
+                            Kshitiz AI Labs may produce inaccurate information. Verify important facts.
                         </span>
                     </div>
                 </div>

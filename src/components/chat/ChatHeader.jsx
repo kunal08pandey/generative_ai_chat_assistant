@@ -142,8 +142,8 @@ export default function ChatHeader({
           {sidebarOpen ? <PanelLeftClose /> : <PanelLeft />}
         </button>
         <div>
-          <div className="chat-header-title" title={conversationTitle || "GEN Labs Assistant"}>
-            {conversationTitle || "GEN Labs Assistant"}
+          <div className="chat-header-title" title={conversationTitle || "Kshitiz AI Labs Assistant"}>
+            {conversationTitle || "Kshitiz AI Labs Assistant"}
           </div>
           <div className="chat-header-subtitle">Horizon AI Interface</div>
         </div>
