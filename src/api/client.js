@@ -216,3 +216,33 @@ export async function generateImage(prompt, model, conversationId) {
   });
   return await handleResponse(res);
 }
+
+export async function loginWithGoogleApi(authPayload) {
+  const res = await fetch(`${API_BASE}/auth/google`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(authPayload),
+  });
+  return await handleResponse(res);
+}
+
+export async function getCurrentUserApi(token, email) {
+  const params = email ? `?email=${encodeURIComponent(email)}` : "";
+  const headers = {};
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+  const res = await fetch(`${API_BASE}/auth/me${params}`, { headers });
+  return await handleResponse(res);
+}
+
+export async function logoutApi() {
+  try {
+    const res = await fetch(`${API_BASE}/auth/logout`, {
+      method: "POST",
+    });
+    return await handleResponse(res);
+  } catch (err) {
+    console.warn("Backend logout notice:", err);
+    return { success: true };
+  }
+}
+

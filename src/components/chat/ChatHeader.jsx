@@ -11,6 +11,7 @@ import {
   Check,
   Image as ImageIcon,
   Trash2,
+  Zap,
 } from "lucide-react";
 
 export default function ChatHeader({
@@ -54,7 +55,7 @@ export default function ChatHeader({
   const groupedModels = (() => {
     const hasProviderData = Object.keys(modelsByProvider).length > 0;
     if (hasProviderData) {
-      const order = ["gemini", "ollama", "llama_cpp"];
+      const order = ["groq", "gemini", "ollama", "llama_cpp"];
       const sortedKeys = Object.keys(modelsByProvider).sort((a, b) => {
         const idxA = order.indexOf(a);
         const idxB = order.indexOf(b);
@@ -64,7 +65,10 @@ export default function ChatHeader({
       return sortedKeys.map((providerKey) => {
         let label = "Ollama Local";
         let iconType = "ollama";
-        if (providerKey === "gemini") {
+        if (providerKey === "groq") {
+          label = "Groq Cloud";
+          iconType = "groq";
+        } else if (providerKey === "gemini") {
           label = "Google Gemini";
           iconType = "gemini";
         } else if (providerKey === "llama_cpp") {
@@ -81,15 +85,28 @@ export default function ChatHeader({
     }
 
     // Fallback heuristic if modelsByProvider is not yet populated
+    const groqList = models.filter(
+      (m) =>
+        m.toLowerCase().includes("llama-3") ||
+        m.toLowerCase().includes("qwen") ||
+        m.toLowerCase().includes("canopylabs") ||
+        m.toLowerCase().includes("orpheus") ||
+        m.toLowerCase().includes("gpt-oss") ||
+        m.toLowerCase().includes("whisper") ||
+        m.toLowerCase().includes("prompt-guard")
+    );
     const geminiList = models.filter(
-      (m) => m.toLowerCase().includes("gemini") || m.toLowerCase().includes("argon")
+      (m) => !groqList.includes(m) && (m.toLowerCase().includes("gemini") || m.toLowerCase().includes("argon"))
     );
     const llamaList = models.filter((m) => m.toLowerCase().includes("gguf"));
     const ollamaList = models.filter(
-      (m) => !geminiList.includes(m) && !llamaList.includes(m)
+      (m) => !groqList.includes(m) && !geminiList.includes(m) && !llamaList.includes(m)
     );
 
     const groups = [];
+    if (groqList.length > 0) {
+      groups.push({ provider: "groq", label: "Groq Cloud", iconType: "groq", models: groqList });
+    }
     if (geminiList.length > 0) {
       groups.push({ provider: "gemini", label: "Google Gemini", iconType: "gemini", models: geminiList });
     }
@@ -104,6 +121,18 @@ export default function ChatHeader({
 
   const getProviderIcon = (modelName) => {
     const lower = (modelName || "").toLowerCase();
+    if (
+      lower.includes("llama-3") ||
+      lower.includes("qwen") ||
+      lower.includes("canopylabs") ||
+      lower.includes("orpheus") ||
+      lower.includes("gpt-oss") ||
+      lower.includes("whisper") ||
+      lower.includes("prompt-guard") ||
+      lower.includes("groq")
+    ) {
+      return <Zap className="model-icon groq-icon" style={{ color: "#F55036" }} />;
+    }
     if (lower.includes("gemini") || lower.includes("argon")) {
       return <Sparkles className="model-icon gemini-icon" />;
     }
@@ -121,9 +150,9 @@ export default function ChatHeader({
     if (lower.includes("argon")) return { label: "Frontier", type: "frontier" };
     if (lower.includes("pro")) return { label: "Pro", type: "pro" };
     if (lower.includes("flash-lite")) return { label: "Lite", type: "lite" };
-    if (lower.includes("flash")) return { label: "Fast", type: "fast" };
-    if (lower.includes("coder")) return { label: "Code", type: "code" };
-    if (lower.includes("flux") || lower.includes("turbo") || lower.includes("image")) return { label: "Vision", type: "vision" };
+    if (lower.includes("flash") || lower.includes("versatile") || lower.includes("instant")) return { label: "Fast", type: "fast" };
+    if (lower.includes("coder") || lower.includes("prompt-guard")) return { label: "Code", type: "code" };
+    if (lower.includes("flux") || lower.includes("turbo") || lower.includes("image") || lower.includes("whisper")) return { label: "Vision", type: "vision" };
     return null;
   };
 
