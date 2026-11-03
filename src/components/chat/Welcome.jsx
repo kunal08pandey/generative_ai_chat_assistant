@@ -60,7 +60,10 @@ const suggestions = [
   },
 ];
 
-export default function WelcomeScreen({ onSuggestionClick }) {
+export default function WelcomeScreen({ onSuggestionClick, user }) {
+  const firstName = user?.name ? user.name.split(" ")[0] : null;
+  const greeting = firstName ? `Welcome back, ${firstName}.` : "Where intelligence meets craft.";
+
   return (
     <div className="welcome-screen">
       <div className="welcome-hero-badge">
@@ -72,7 +75,7 @@ export default function WelcomeScreen({ onSuggestionClick }) {
         <img src="/logo.png" alt="Kshitiz AI Labs Logo" className="welcome-logo-img" />
       </div>
 
-      <h2 className="welcome-title">Where intelligence meets craft.</h2>
+      <h2 className="welcome-title">{greeting}</h2>
       <p className="welcome-subtitle">
         Your high-performance workspace for reasoning, full-stack coding, 
         multimodal analysis, and generative intelligence.

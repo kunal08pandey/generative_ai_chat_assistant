@@ -2,17 +2,35 @@ import { useState, useEffect } from "react";
 import Sidebar from "./components/Sidebar";
 import ChatWindow from "./components/chat/ChatWindow";
 import ChatHeader from "./components/chat/ChatHeader";
+import LoginScreen from "./components/auth/LoginScreen";
 import {
   fetchConversation,
   fetchMessages,
   createNewConversation,
   deleteConversation,
   getModels,
+  getCurrentUserApi,
+  logoutApi,
 } from "./api/client";
 import DeleteConfirmModal from "./components/chat/DeleteConfirmModal";
 
 
 export default function App() {
+  const [user, setUser] = useState(() => {
+    try {
+      const saved = localStorage.getItem("auth_user");
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
+  const [authToken, setAuthToken] = useState(() => {
+    try {
+      return localStorage.getItem("auth_token") || "";
+    } catch {
+      return "";
+    }
+  });
   const [model, setModel] = useState(() => {
     try {
       return localStorage.getItem("selected_model") || "gemini-3.5-flash";
@@ -73,6 +91,54 @@ export default function App() {
       console.warn("Could not save model preference:", e);
     }
   };
+
+  /* ── Auth Handlers ── */
+  const handleLoginSuccess = (userData, token) => {
+    setUser(userData);
+    if (token) setAuthToken(token);
+    try {
+      localStorage.setItem("auth_user", JSON.stringify(userData));
+      if (token) localStorage.setItem("auth_token", token);
+    } catch (e) {
+      console.warn("Could not save session to storage:", e);
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await logoutApi();
+    } catch (err) {
+      console.warn("Logout error notice:", err);
+    } finally {
+      setUser(null);
+      setAuthToken("");
+      try {
+        localStorage.removeItem("auth_user");
+        localStorage.removeItem("auth_token");
+      } catch (e) {
+        console.warn("Could not clear session storage:", e);
+      }
+    }
+  };
+
+  // Verify session on boot if user exists
+  useEffect(() => {
+    if (!user) return;
+    getCurrentUserApi(authToken, user.email)
+      .then((res) => {
+        if (res?.user) {
+          setUser(res.user);
+          try {
+            localStorage.setItem("auth_user", JSON.stringify(res.user));
+          } catch (e) {
+            console.warn("Could not update cached user:", e);
+          }
+        }
+      })
+      .catch((err) => {
+        console.warn("Session check notice:", err);
+      });
+  }, []);
 
   /* ── Load models ── */
   useEffect(() => {
@@ -258,6 +324,17 @@ export default function App() {
   // Readiness condition: active model and selected conversation ID exist
   const isReady = Boolean(model && selectedConversationId);
 
+  // If user is not authenticated with Google, show the LoginScreen
+  if (!user) {
+    return (
+      <LoginScreen
+        onLoginSuccess={handleLoginSuccess}
+        darkMode={darkMode}
+        toggleDark={toggleDark}
+      />
+    );
+  }
+
   return (
     <div className="app">
       <Sidebar
@@ -273,6 +350,8 @@ export default function App() {
         }}
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
+        user={user}
+        onLogout={handleLogout}
       />
 
       <div className="main-content">
@@ -287,6 +366,8 @@ export default function App() {
           toggleDark={toggleDark}
           conversationTitle={selectedConversation?.title}
           selectedConversationId={selectedConversationId}
+          user={user}
+          onLogout={handleLogout}
           onDeleteCurrentChat={() =>
             handleRequestDelete(selectedConversation || { id: selectedConversationId, title: "New Chat" })
           }
@@ -302,6 +383,7 @@ export default function App() {
           isReady={isReady}
           initializationError={initializationError}
           isTitled={isTitled}
+          user={user}
           onTitleUpdate={(convId, title) => {
             setConversations((prev) =>
               prev.map((c) => (c.id === convId ? { ...c, title } : c))

@@ -4,6 +4,7 @@ import react from '@vitejs/plugin-react'
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
+  envDir: '..',
   server: {
     host: true, // Expose application to local network (0.0.0.0)
     proxy: {

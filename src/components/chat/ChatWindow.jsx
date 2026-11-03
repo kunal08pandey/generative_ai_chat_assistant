@@ -99,6 +99,7 @@ export default function ChatWindow({
     initializationError,
     onTitleUpdate,
     isTitled,           // true once conversation has been given a real title
+    user,
 }) {
     const [input, setInput] = useState("");
     const [images, setImages] = useState([]); // Array of { name, base64, preview }
@@ -716,7 +717,7 @@ export default function ChatWindow({
 
             <div className="messages" ref={messagesContainerRef} onScroll={handleScroll}>
                 {messages.length === 0 ? (
-                    <WelcomeScreen onSuggestionClick={handleSuggestionClick} />
+                    <WelcomeScreen onSuggestionClick={handleSuggestionClick} user={user} />
                 ) : (
                     messages.map((m, i) => (
                         <MessageBubble

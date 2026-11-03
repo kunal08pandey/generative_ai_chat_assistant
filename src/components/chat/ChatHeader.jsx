@@ -13,6 +13,7 @@ import {
   Trash2,
   Zap,
 } from "lucide-react";
+import UserProfileMenu from "../auth/UserProfileMenu";
 
 export default function ChatHeader({
   onToggleSidebar,
@@ -26,6 +27,8 @@ export default function ChatHeader({
   conversationTitle,
   onDeleteCurrentChat,
   selectedConversationId,
+  user,
+  onLogout,
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef(null);
@@ -147,12 +150,14 @@ export default function ChatHeader({
 
   const getModelBadge = (modelName) => {
     const lower = (modelName || "").toLowerCase();
+    // Audio models (check whisper first so whisper-large-v3-turbo is Audio, not Vision)
+    if (lower.includes("whisper")) return { label: "Audio", type: "audio" };
     if (lower.includes("argon")) return { label: "Frontier", type: "frontier" };
     if (lower.includes("pro")) return { label: "Pro", type: "pro" };
     if (lower.includes("flash-lite")) return { label: "Lite", type: "lite" };
     if (lower.includes("flash") || lower.includes("versatile") || lower.includes("instant")) return { label: "Fast", type: "fast" };
     if (lower.includes("coder") || lower.includes("prompt-guard")) return { label: "Code", type: "code" };
-    if (lower.includes("flux") || lower.includes("turbo") || lower.includes("image") || lower.includes("whisper")) return { label: "Vision", type: "vision" };
+    if (lower.includes("flux") || lower.includes("turbo") || lower.includes("image")) return { label: "Vision", type: "vision" };
     return null;
   };
 
@@ -180,7 +185,7 @@ export default function ChatHeader({
 
       {/* Right: Model dropdown selector + dark mode */}
       <div className="chat-header-right">
-        {models.length > 0 && (
+        {(models.length > 0 || model) && (
           <div className="model-dropdown-container" ref={dropdownRef}>
             <button
               className={`model-dropdown-trigger ${isOpen ? "active" : ""}`}
@@ -265,9 +270,12 @@ export default function ChatHeader({
         )}
 
         {/* Dark mode toggle */}
-        <button className="icon-btn" onClick={toggleDark} title="Toggle dark mode">
-          {darkMode ? <Sun /> : <Moon />}
+        <button className="icon-btn" onClick={toggleDark} title={darkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}>
+          {darkMode ? <Sun size={17} /> : <Moon size={17} />}
         </button>
+
+        {/* User profile dropdown */}
+        {user && <UserProfileMenu user={user} onLogout={onLogout} />}
       </div>
     </header>
   );

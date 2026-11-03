@@ -15,6 +15,7 @@ import {
     Pencil,
     Check,
     X,
+    LogOut,
 } from "lucide-react";
 
 export default function Sidebar({
@@ -26,6 +27,8 @@ export default function Sidebar({
     onTitleUpdate,
     isOpen,
     onClose,
+    user,
+    onLogout,
 }) {
     const [search, setSearch] = useState("");
     const [editingId, setEditingId] = useState(null);
@@ -278,6 +281,40 @@ export default function Sidebar({
                         </p>
                     )}
                 </div>
+
+                {/* User Profile Card */}
+                {user && (
+                    <div className="sidebar-user-card">
+                        <div className="sidebar-user-avatar">
+                            {user.picture ? (
+                                <img src={user.picture} alt={user.name} className="sidebar-user-avatar-img" />
+                            ) : (
+                                <div className="sidebar-user-avatar-fallback">
+                                    {(user.name || user.email || "U").slice(0, 2).toUpperCase()}
+                                </div>
+                            )}
+                        </div>
+                        <div className="sidebar-user-info">
+                            <span className="sidebar-user-name" title={user.name || user.email}>
+                                {user.name || "Google User"}
+                            </span>
+                            <span className="sidebar-user-email" title={user.email}>
+                                {user.email}
+                            </span>
+                        </div>
+                        {onLogout && (
+                            <button
+                                type="button"
+                                className="sidebar-logout-btn"
+                                onClick={onLogout}
+                                title="Sign Out of Google Account"
+                                aria-label="Sign Out"
+                            >
+                                <LogOut size={13} />
+                            </button>
+                        )}
+                    </div>
+                )}
 
                 <div className="sidebar-footer">
                     <span>Kshitiz AI Labs</span>
