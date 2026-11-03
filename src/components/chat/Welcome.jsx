@@ -6,6 +6,7 @@ import {
   Layers,
   FileText,
   Brain,
+  ArrowUpRight,
 } from "lucide-react";
 
 const suggestions = [
@@ -62,13 +63,19 @@ const suggestions = [
 export default function WelcomeScreen({ onSuggestionClick }) {
   return (
     <div className="welcome-screen">
+      <div className="welcome-hero-badge">
+        <Sparkles size={13} className="welcome-badge-icon" />
+        <span>Studio Multi-Model Intelligence</span>
+      </div>
+
       <div className="welcome-icon">
         <img src="/logo.png" alt="Kshitiz AI Labs Logo" className="welcome-logo-img" />
       </div>
-      <h2 className="welcome-title">How can I help you today?</h2>
+
+      <h2 className="welcome-title">Where intelligence meets craft.</h2>
       <p className="welcome-subtitle">
-        I&apos;m your AI assistant powered by Kshitiz AI Labs. Ask me anything — from
-        coding and writing to analysis and creative work.
+        Your high-performance workspace for reasoning, full-stack coding, 
+        multimodal analysis, and generative intelligence.
       </p>
 
       <div className="suggestion-grid">
@@ -85,15 +92,18 @@ export default function WelcomeScreen({ onSuggestionClick }) {
                 className="suggestion-icon"
                 style={{
                   color: s.color,
-                  backgroundColor: `${s.color}18`,
+                  backgroundColor: `${s.color}15`,
                 }}
               >
-                <Icon size={20} />
+                <Icon size={19} />
               </div>
               <div className="suggestion-content">
                 <div className="suggestion-header">
                   <h4>{s.title}</h4>
-                  {s.tag && <span className="suggestion-tag">{s.tag}</span>}
+                  <div className="suggestion-header-right">
+                    {s.tag && <span className="suggestion-tag">{s.tag}</span>}
+                    <ArrowUpRight size={14} className="suggestion-arrow" />
+                  </div>
                 </div>
                 <p>{s.description}</p>
               </div>

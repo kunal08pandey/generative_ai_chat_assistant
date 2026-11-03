@@ -151,9 +151,12 @@ export default function Sidebar({
                 </div>
 
                 {/* New Chat */}
-                <button className="new-chat-btn" onClick={createNewChat}>
-                    <Plus />
-                    New Chat
+                <button className="new-chat-btn" onClick={createNewChat} title="Start new conversation (New Chat)">
+                    <div className="new-chat-btn-left">
+                        <Plus size={16} />
+                        <span>New Chat</span>
+                    </div>
+                    <span className="new-chat-shortcut">⌘N</span>
                 </button>
 
                 {/* Search */}
@@ -277,7 +280,9 @@ export default function Sidebar({
                 </div>
 
                 <div className="sidebar-footer">
-                    Kshitiz AI Labs — Powered by Ollama
+                    <span>Kshitiz AI Labs</span>
+                    <span className="sidebar-footer-dot">•</span>
+                    <span>Studio v2.0</span>
                 </div>
             </aside>
         </>
