@@ -8,7 +8,18 @@
  * - Printable PDF documents (.pdf)
  * - Markdown / Plaintext (.md / .txt)
  */
+import { getAuthHeaders } from "../api/client";
+
 const API_BASE = (import.meta.env?.VITE_API_BASE_URL || "").replace(/\/$/, "");
+
+export function escapeHtml(str) {
+  return String(str || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
 
 const LANGUAGE_MAP = {
   python: { ext: ".py", defaultName: "main.py", label: "Python", mime: "text/x-python", color: "#3B82F6" },
@@ -158,7 +169,8 @@ export async function exportToDoc(title = "Document", content = "", filename = "
   try {
     const res = await fetch(`${API_BASE}/export/docx`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      headers: { "Content-Type": "application/json", ...getAuthHeaders() },
       body: JSON.stringify({
         title,
         content,
@@ -181,12 +193,14 @@ export async function exportToDoc(title = "Document", content = "", filename = "
     console.warn("Backend /export/docx failed, falling back to client-side DOC:", err);
   }
 
-  // Client-side fallback: Word-compatible HTML format
+  // Client-side fallback: Word-compatible HTML format with sanitized content
+  const safeTitle = escapeHtml(title);
+  const safeContent = escapeHtml(content);
   const htmlContent = `
     <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
     <head>
       <meta charset="utf-8">
-      <title>${title}</title>
+      <title>${safeTitle}</title>
       <style>
         body { font-family: 'Calibri', 'Segoe UI', Arial, sans-serif; font-size: 11pt; line-height: 1.6; color: #1e293b; }
         h1 { color: #1e3a8a; font-size: 18pt; margin-bottom: 8px; border-bottom: 2px solid #e2e8f0; padding-bottom: 4px; }
@@ -198,8 +212,8 @@ export async function exportToDoc(title = "Document", content = "", filename = "
       </style>
     </head>
     <body>
-      <h1>${title}</h1>
-      <div>${content.replace(/\n/g, "<br/>")}</div>
+      <h1>${safeTitle}</h1>
+      <div>${safeContent.replace(/\n/g, "<br/>")}</div>
     </body>
     </html>
   `;
@@ -218,7 +232,8 @@ export async function exportToExcel(title = "Spreadsheet", content = "", filenam
   try {
     const res = await fetch(`${API_BASE}/export/xlsx`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      headers: { "Content-Type": "application/json", ...getAuthHeaders() },
       body: JSON.stringify({
         title,
         content,
@@ -241,7 +256,7 @@ export async function exportToExcel(title = "Spreadsheet", content = "", filenam
     console.warn("Backend /export/xlsx failed, falling back to client-side CSV:", err);
   }
 
-  // Client-side fallback: CSV with UTF-8 BOM so Excel opens it with proper column layout
+  // Client-side fallback: CSV with UTF-8 BOM and formula injection protection
   let csvContent = content;
   if (content.includes("|")) {
     const lines = content.split("\n");
@@ -253,7 +268,14 @@ export async function exportToExcel(title = "Spreadsheet", content = "", filenam
         const cells = trimmed
           .replace(/^\||\|$/g, "")
           .split("|")
-          .map((c) => `"${c.trim().replace(/"/g, '""')}"`);
+          .map((c) => {
+            const raw = c.trim();
+            // Prevent CSV formula injection by prefixing formula triggers with single quote
+            const safe = ["=", "+", "-", "@", "\t", "\r"].some((ch) => raw.startsWith(ch))
+              ? `'${raw}`
+              : raw;
+            return `"${safe.replace(/"/g, '""')}"`;
+          });
         csvRows.push(cells.join(","));
       }
     }
@@ -286,8 +308,12 @@ export function exportToPdf(title = "Document", content = "") {
     return;
   }
 
-  // Convert basic markdown paragraphs, headings, and code
-  const formattedHtml = content
+  const safeTitle = escapeHtml(title);
+  // Sanitize raw HTML tags to prevent XSS in printWindow document.write
+  const safeContent = escapeHtml(content);
+
+  // Convert basic markdown paragraphs, headings, and code safely
+  const formattedHtml = safeContent
     .replace(/^### (.*$)/gim, "<h3>$1</h3>")
     .replace(/^## (.*$)/gim, "<h2>$1</h2>")
     .replace(/^# (.*$)/gim, "<h1>$1</h1>")
@@ -300,7 +326,7 @@ export function exportToPdf(title = "Document", content = "") {
     <html>
     <head>
       <meta charset="utf-8">
-      <title>${title}</title>
+      <title>${safeTitle}</title>
       <style>
         @page { margin: 20mm; size: A4; }
         body {
@@ -334,7 +360,7 @@ export function exportToPdf(title = "Document", content = "") {
       </style>
     </head>
     <body>
-      <h1>${title}</h1>
+      <h1>${safeTitle}</h1>
       <div><p>${formattedHtml}</p></div>
       <script>
         window.onload = function() {

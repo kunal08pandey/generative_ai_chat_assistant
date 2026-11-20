@@ -53,9 +53,9 @@ export default function App() {
       return false;
     }
   });
-  const [modelsLoaded, setModelsLoaded] = useState(false);
-  const [conversationsLoaded, setConversationsLoaded] = useState(false);
-  const [initializationError, setInitializationError] = useState("");
+  const [, setModelsLoaded] = useState(false);
+  const [, setConversationsLoaded] = useState(false);
+  const [initializationError] = useState("");
   const [deleteTarget, setDeleteTarget] = useState(null); // { id, title }
   const [isDeletingChat, setIsDeletingChat] = useState(false);
 
@@ -138,6 +138,7 @@ export default function App() {
       .catch((err) => {
         console.warn("Session check notice:", err);
       });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   /* ── Load models ── */
@@ -154,13 +155,11 @@ export default function App() {
             const savedModel = localStorage.getItem("selected_model");
             if (savedModel && all.includes(savedModel)) {
               setModel(savedModel);
-            } else if (!all.includes(model)) {
-              setModel(all[0]);
+            } else {
+              setModel((prev) => (all.includes(prev) ? prev : all[0]));
             }
           } catch {
-            if (!all.includes(model)) {
-              setModel(all[0]);
-            }
+            setModel((prev) => (all.includes(prev) ? prev : all[0]));
           }
         }
       })

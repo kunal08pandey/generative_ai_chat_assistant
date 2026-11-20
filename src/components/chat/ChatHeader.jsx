@@ -172,7 +172,13 @@ export default function ChatHeader({
     <header className="chat-header">
       {/* Left: toggle + title */}
       <div className="chat-header-left">
-        <button className="icon-btn" onClick={onToggleSidebar} title="Toggle sidebar">
+        <button
+          className="icon-btn"
+          onClick={onToggleSidebar}
+          title={sidebarOpen ? "Close sidebar" : "Open sidebar"}
+          aria-label={sidebarOpen ? "Close sidebar" : "Open sidebar"}
+          type="button"
+        >
           {sidebarOpen ? <PanelLeftClose /> : <PanelLeft />}
         </button>
         <div>
@@ -270,7 +276,13 @@ export default function ChatHeader({
         )}
 
         {/* Dark mode toggle */}
-        <button className="icon-btn" onClick={toggleDark} title={darkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}>
+        <button
+          className="icon-btn"
+          onClick={toggleDark}
+          title={darkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
+          aria-label={darkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
+          type="button"
+        >
           {darkMode ? <Sun size={17} /> : <Moon size={17} />}
         </button>
 

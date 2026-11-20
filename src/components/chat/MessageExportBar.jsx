@@ -54,7 +54,7 @@ export default function MessageExportBar({ text = "", onDelete = null, onRegener
   const handleDownloadExcel = async () => {
     setShowExportMenu(false);
     const firstHeading = text.match(/^#+\s*(.+)$/m)?.[1] || "Spreadsheet";
-    const cleanTitle = firstHeading.replace(/[^a-zA-Z0-9_\-\s]/g, "").trim().replace(/\s+/g, "_");
+    const cleanTitle = firstHeading.replace(/[^a-zA-Z0-9_-\s]/g, "").trim().replace(/\s+/g, "_");
     await exportToExcel(cleanTitle, text, `${cleanTitle}.xlsx`);
     setExcelSuccess(true);
     setTimeout(() => setExcelSuccess(false), 2000);
@@ -63,7 +63,7 @@ export default function MessageExportBar({ text = "", onDelete = null, onRegener
   const handleDownloadDocx = async () => {
     setShowExportMenu(false);
     const firstHeading = text.match(/^#+\s*(.+)$/m)?.[1] || "Document";
-    const cleanTitle = firstHeading.replace(/[^a-zA-Z0-9_\-\s]/g, "").trim().replace(/\s+/g, "_");
+    const cleanTitle = firstHeading.replace(/[^a-zA-Z0-9_-\s]/g, "").trim().replace(/\s+/g, "_");
     await exportToDoc(cleanTitle, text, `${cleanTitle}.docx`);
     setDocxSuccess(true);
     setTimeout(() => setDocxSuccess(false), 2000);
@@ -78,7 +78,7 @@ export default function MessageExportBar({ text = "", onDelete = null, onRegener
   const handleDownloadMd = () => {
     setShowExportMenu(false);
     const firstHeading = text.match(/^#+\s*(.+)$/m)?.[1] || "document";
-    const cleanTitle = firstHeading.replace(/[^a-zA-Z0-9_\-\s]/g, "").trim().replace(/\s+/g, "_");
+    const cleanTitle = firstHeading.replace(/[^a-zA-Z0-9_-\s]/g, "").trim().replace(/\s+/g, "_");
     downloadFile(text, `${cleanTitle}.md`, "text/markdown;charset=utf-8");
   };
 
@@ -152,7 +152,7 @@ export default function MessageExportBar({ text = "", onDelete = null, onRegener
                 onClick={handleDownloadDocx}
               >
                 <FileDown size={15} style={{ color: "#2563EB" }} />
-                <span>Export to Word (.docx)</span>
+                <span>{docxSuccess ? "Saved!" : "Export to Word (.docx)"}</span>
               </button>
 
               <button

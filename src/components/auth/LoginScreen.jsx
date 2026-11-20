@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { Sparkles, Sun, Moon, ArrowRight, ShieldCheck, Zap, Layers, FileCode, CheckCircle2 } from "lucide-react";
-import { loginWithGoogleApi } from "../../api/client";
+import { loginWithGoogleApi, loginWithDemoApi } from "../../api/client";
 
 // Official Google "G" multicolor vector icon
 function GoogleLogoSvg({ size = 20 }) {
@@ -108,6 +108,7 @@ export default function LoginScreen({ onLoginSuccess, darkMode, toggleDark }) {
     return () => {
       if (interval) clearInterval(interval);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clientId, onLoginSuccess]);
 
   // Click handler for custom Google Sign-In button
@@ -135,11 +136,11 @@ export default function LoginScreen({ onLoginSuccess, darkMode, toggleDark }) {
   };
 
   // Explicit demo profile login (only called when user clicks a demo profile chip)
-  const handleDemoLogin = async (presetUser) => {
+  const handleDemoLogin = async (profileName = "alex") => {
     setLoading(true);
     setError("");
     try {
-      const result = await loginWithGoogleApi(presetUser);
+      const result = await loginWithDemoApi(profileName);
       if (result && result.user) {
         onLoginSuccess(result.user, result.token);
       } else {
@@ -230,14 +231,7 @@ export default function LoginScreen({ onLoginSuccess, darkMode, toggleDark }) {
                 <button
                   type="button"
                   className="demo-profile-chip"
-                  onClick={() =>
-                    handleDemoLogin({
-                      email: "alex.rivers@gmail.com",
-                      name: "Alex Rivers",
-                      picture: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80",
-                      google_id: "google-alex-demo",
-                    })
-                  }
+                  onClick={() => handleDemoLogin("alex")}
                   disabled={loading}
                 >
                   <img
@@ -251,14 +245,7 @@ export default function LoginScreen({ onLoginSuccess, darkMode, toggleDark }) {
                 <button
                   type="button"
                   className="demo-profile-chip"
-                  onClick={() =>
-                    handleDemoLogin({
-                      email: "sarah.chen@gmail.com",
-                      name: "Sarah Chen",
-                      picture: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=256&q=80",
-                      google_id: "google-sarah-demo",
-                    })
-                  }
+                  onClick={() => handleDemoLogin("sarah")}
                   disabled={loading}
                 >
                   <img
@@ -285,14 +272,7 @@ export default function LoginScreen({ onLoginSuccess, darkMode, toggleDark }) {
                 className="login-custom-form"
                 onSubmit={(e) => {
                   e.preventDefault();
-                  if (customEmail.trim()) {
-                    handleDemoLogin({
-                      email: customEmail.trim(),
-                      name: customName.trim() || customEmail.split("@")[0].replace(".", " "),
-                      picture: null,
-                      google_id: `google-${Date.now()}`,
-                    });
-                  }
+                  setError("Server-verified Google identity is required for security. Please use the official 'Sign in with Google' button above, or select a demo profile.");
                 }}
               >
                 <div className="login-input-field">

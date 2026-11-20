@@ -1598,6 +1598,150 @@ select {
   box-shadow: 0 4px 14px rgba(239, 68, 68, 0.3);
 }
 
+/* Speech-to-Text Microphone Button */
+.mic-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  flex-shrink: 0;
+}
+
+.mic-btn:hover:not(:disabled) {
+  background: var(--bg);
+  color: var(--dark);
+  border-color: var(--primary);
+  transform: scale(1.05);
+}
+
+.mic-btn:active:not(:disabled) {
+  transform: scale(0.96);
+}
+
+.mic-btn:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.mic-btn:disabled {
+  background: var(--card-bg);
+  color: var(--muted);
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.mic-btn svg {
+  width: 17px;
+  height: 17px;
+}
+
+/* Active Recording State with Pulsing Animation */
+.mic-btn.listening {
+  background: #EF4444;
+  color: #FFFFFF;
+  border-color: #EF4444;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.25);
+  animation: mic-pulse 1.5s infinite;
+}
+
+.mic-btn.listening:hover:not(:disabled) {
+  background: #DC2626;
+  border-color: #DC2626;
+  color: #FFFFFF;
+}
+
+.mic-btn.transcribing {
+  background: var(--card-bg);
+  border-color: var(--primary);
+  color: var(--primary);
+  cursor: wait;
+}
+
+.mic-btn.transcribing svg {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes mic-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.5);
+  }
+  70% {
+    box-shadow: 0 0 0 8px rgba(239, 68, 68, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+  }
+}
+
+/* Non-blocking Speech Error Banner */
+.speech-error-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 12px;
+  margin-bottom: 8px;
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  border-radius: var(--radius-md);
+  font-size: 12.5px;
+  color: #DC2626;
+  animation: fadeIn 0.2s ease-in-out;
+}
+
+.dark .speech-error-bar {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: rgba(239, 68, 68, 0.35);
+  color: #FCA5A5;
+}
+
+.speech-error-bar-content {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex: 1;
+}
+
+.speech-error-bar-content svg {
+  flex-shrink: 0;
+}
+
+.speech-error-bar-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.4;
+}
+
+.speech-error-close-btn {
+  background: transparent;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  padding: 3px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.7;
+  transition: opacity 0.15s ease, background 0.15s ease;
+  flex-shrink: 0;
+}
+
+.speech-error-close-btn:hover {
+  opacity: 1;
+  background: rgba(239, 68, 68, 0.12);
+}
+
 .input-bottom {
   display: flex;
   align-items: center;
@@ -1793,7 +1937,36 @@ select {
   }
 
   .chat-header {
-    padding: 0 16px;
+    padding: 0 12px;
+    height: 56px;
+  }
+
+  .chat-header-subtitle {
+    display: none;
+  }
+
+  .chat-header-title {
+    max-width: 140px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 13.5px;
+  }
+
+  .model-dropdown-trigger {
+    padding: 5px 8px;
+    max-width: 140px;
+  }
+
+  .trigger-model-name {
+    max-width: 85px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .chat-header-right {
+    gap: 6px;
   }
 
   .messages {
@@ -4053,4 +4226,76 @@ select {
 .sidebar-logout-btn:hover {
   color: #EF4444;
   background: rgba(239, 68, 68, 0.1);
+}
+
+/* ==========================================================================
+   STRUCTURED CITATIONS & DOCUMENT SOURCES (Phase 3)
+   ========================================================================== */
+
+.citations-container {
+  margin-top: 12px;
+  padding: 10px 14px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 12px;
+}
+
+.citations-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+  color: var(--muted);
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-size: 11px;
+}
+
+.citation-header-icon {
+  color: var(--primary);
+}
+
+.citations-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.citation-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  color: var(--dark);
+  font-size: 11.5px;
+  max-width: 280px;
+  cursor: default;
+  transition: all 0.15s ease;
+}
+
+.citation-chip:hover {
+  border-color: var(--primary);
+  background: rgba(37, 99, 235, 0.05);
+}
+
+.citation-chip-badge {
+  font-weight: 700;
+  color: var(--primary);
+}
+
+.citation-chip-source {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.citation-chip-chunk {
+  font-size: 10px;
+  color: var(--muted);
+  opacity: 0.8;
 }

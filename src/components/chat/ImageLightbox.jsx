@@ -21,7 +21,7 @@ export default function ImageLightbox({ isOpen, imageUrl, prompt = "Generated Im
     try {
       const cleanName = (prompt || "generated_image")
         .slice(0, 40)
-        .replace(/[^a-zA-Z0-9_\-]/g, "_")
+        .replace(/[^a-zA-Z0-9_-]/g, "_")
         .toLowerCase();
 
       // If data URL or external URL

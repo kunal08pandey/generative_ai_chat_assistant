@@ -13,7 +13,8 @@ import {
 import MessageBubble from "../MessageBubble";
 import WelcomeScreen from "./Welcome";
 import DeleteConfirmModal from "./DeleteConfirmModal";
-import { Paperclip, Send, X, File, Square, Image as ImageIcon, FileCode, ChevronDown } from "lucide-react";
+import { Paperclip, Send, X, File, Square, Image as ImageIcon, FileCode, ChevronDown, Mic, AlertCircle, Loader2 } from "lucide-react";
+import { useSpeechRecognition } from "../../hooks/useSpeechRecognition";
 
 function normalizeError(err, activeModel) {
     if (typeof err === "object" && err !== null && (err.title || err.message)) {
@@ -107,10 +108,36 @@ export default function ChatWindow({
     const [isLoading, setIsLoading] = useState(false);
     const [hasResponseStarted, setHasResponseStarted] = useState(false);
     const [isDragging, setIsDragging] = useState(false);
-    const [thinkingState, setThinkingState] = useState(null); // { model, provider } or null
+    const [, setThinkingState] = useState(null); // { model, provider } or null
     const [deleteMessageTarget, setDeleteMessageTarget] = useState(null); // { index, message }
     const [isDeletingMessage, setIsDeletingMessage] = useState(false);
     const [isUserScrolledUp, setIsUserScrolledUp] = useState(false);
+
+    const {
+        isListening,
+        isTranscribing,
+        speechError,
+        startListening,
+        stopListening,
+        clearSpeechError,
+    } = useSpeechRecognition({
+        onTranscript: (transcription) => {
+            setInput(transcription);
+            if (textareaRef.current) {
+                textareaRef.current.style.height = "auto";
+                textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 180)}px`;
+            }
+        },
+        disabled: isLoading || !isReady,
+    });
+
+    const handleToggleMic = () => {
+        if (isListening) {
+            stopListening();
+        } else {
+            startListening(input);
+        }
+    };
 
     const textareaRef = useRef(null);
     const bottomRef = useRef(null);
@@ -143,7 +170,10 @@ export default function ChatWindow({
 
     useEffect(() => {
         selectedConversationRef.current = selectedConversationId;
-    }, [selectedConversationId]);
+        if (isListening) {
+            stopListening();
+        }
+    }, [selectedConversationId, isListening, stopListening]);
 
     const [showAttachmentMenu, setShowAttachmentMenu] = useState(false);
     const attachmentMenuRef = useRef(null);
@@ -280,6 +310,10 @@ export default function ChatWindow({
     };
 
     async function handleSend(overrideText = null) {
+        if (isListening) {
+            stopListening();
+        }
+
         const textToSubmit = typeof overrideText === "string" ? overrideText : input;
 
         // Optimized condition: can send if there is input, OR images, OR documents
@@ -409,6 +443,7 @@ export default function ChatWindow({
 
             // Add an empty assistant message that we'll fill with streamed tokens
             let fullText = "";
+            let streamCitations = null;
             if (!assistantAdded) {
                 setMessages((prev) => [...prev, { role: "assistant", content: "", isThinking: true, thinkingModel: model }]);
                 assistantAdded = true;
@@ -418,6 +453,11 @@ export default function ChatWindow({
 
             for await (const event of parseSSEStream(response)) {
                 if (selectedConversationRef.current !== conversationId) break;
+
+                if (event.citations) {
+                    streamCitations = event.citations;
+                    continue;
+                }
 
                 if (event.error) {
                     streamHadError = true;
@@ -479,11 +519,13 @@ export default function ChatWindow({
                     // Throttle updates to ~60ms to avoid overwhelming React's render cycles
                     if (now - lastUpdate > 60) {
                         const currentText = fullText;
+                        const citations = streamCitations;
                         setMessages((prev) => {
                             const updated = [...prev];
                             updated[updated.length - 1] = {
                                 role: "assistant",
                                 content: currentText,
+                                citations: citations,
                                 isThinking: false,
                                 isStreaming: true,
                             };
@@ -502,12 +544,14 @@ export default function ChatWindow({
             if (!streamHadError) {
                 setThinkingState(null);
                 const finalText = fullText;
+                const citations = streamCitations;
                 setMessages((prev) => {
                     const updated = [...prev];
                     if (updated.length > 0 && updated[updated.length - 1].role === "assistant") {
                         updated[updated.length - 1] = {
                             role: "assistant",
                             content: finalText,
+                            citations: citations,
                             isThinking: false,
                             isStreaming: false,
                         };
@@ -579,6 +623,9 @@ export default function ChatWindow({
     }
 
     const handleStop = () => {
+        if (isListening) {
+            stopListening();
+        }
         abortControllerRef.current?.abort();
     };
 
@@ -725,6 +772,7 @@ export default function ChatWindow({
                             role={m.role}
                             text={m.content}
                             attachments={m.attachments || []}
+                            citations={m.citations || []}
                             isEditable={m.role === "user"}
                             onEdit={(newText) => handleEditMessage(i, newText)}
                             onDelete={() => handleDeleteMessagePrompt(i)}
@@ -789,6 +837,24 @@ export default function ChatWindow({
                     </div>
                 )}
                 <div className="input-box">
+                    {speechError && (
+                        <div className="speech-error-bar" role="alert">
+                            <div className="speech-error-bar-content">
+                                <AlertCircle size={15} />
+                                <span className="speech-error-bar-text">{speechError}</span>
+                            </div>
+                            <button
+                                type="button"
+                                className="speech-error-close-btn"
+                                onClick={clearSpeechError}
+                                aria-label="Dismiss error"
+                                title="Dismiss"
+                            >
+                                <X size={13} />
+                            </button>
+                        </div>
+                    )}
+
                     {(files.length > 0 || images.length > 0) && (
                         <div className="attached-files">
                             {/* Images thumbnails */}
@@ -877,23 +943,65 @@ export default function ChatWindow({
                             value={input}
                             onChange={(e) => setInput(e.target.value)}
                             onKeyDown={handleKeyDown}
-                            placeholder={isReady ? "Type your message here…" : "Waiting for chat service…"}
+                            placeholder={
+                                isTranscribing
+                                    ? "Transcribing audio with Whisper…"
+                                    : isListening
+                                    ? "Recording audio… Tap mic again to transcribe"
+                                    : (isReady ? "Type your message here…" : "Waiting for chat service…")
+                            }
                             rows={1}
                         />
+
+                        {/* Voice Input (Speech-to-Text via Groq Whisper) Button */}
+                        <button
+                            type="button"
+                            className={`mic-btn ${isListening ? "listening" : ""} ${isTranscribing ? "transcribing" : ""}`}
+                            onClick={handleToggleMic}
+                            disabled={!isReady || isLoading || isTranscribing}
+                            title={
+                                isTranscribing
+                                    ? "Transcribing with Whisper…"
+                                    : isListening
+                                    ? "Stop recording & transcribe with Whisper"
+                                    : "Voice input (Groq Whisper)"
+                            }
+                            aria-label={
+                                isTranscribing
+                                    ? "Transcribing with Whisper…"
+                                    : isListening
+                                    ? "Stop recording & transcribe with Whisper"
+                                    : "Voice input (Groq Whisper)"
+                            }
+                            aria-pressed={isListening}
+                        >
+                            {isTranscribing ? (
+                                <Loader2 size={17} />
+                            ) : isListening ? (
+                                <Square size={16} fill="currentColor" />
+                            ) : (
+                                <Mic size={18} />
+                            )}
+                        </button>
+
                         {isLoading ? (
                             <button
+                                type="button"
                                 className="send-btn stop-btn"
                                 onClick={handleStop}
                                 title="Stop generating"
+                                aria-label="Stop generating"
                             >
                                 <Square fill="currentColor" size={18} />
                             </button>
                         ) : (
                             <button
+                                type="button"
                                 className="send-btn"
                                 onClick={() => handleSend()}
                                 disabled={!isReady || (!input.trim() && images.length === 0 && files.length === 0)}
                                 title="Send"
+                                aria-label="Send message"
                             >
                                 <Send />
                             </button>

@@ -1,6 +1,18 @@
 const API_BASE = (import.meta.env?.VITE_API_BASE_URL || "").replace(/\/$/, "");
 
 /**
+ * Helper to build request headers with Authorization Bearer token from localStorage.
+ */
+export function getAuthHeaders(customHeaders = {}) {
+  const headers = { ...customHeaders };
+  const token = typeof localStorage !== "undefined" ? localStorage.getItem("auth_token") : null;
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+  return headers;
+}
+
+/**
  * Standard utility to parse the APIResponse envelope.
  * Throws an error on non-ok statuses or if success = false.
  */
@@ -22,7 +34,10 @@ async function fetchAllPages(endpoint, pageSize) {
 
   while (true) {
     const separator = endpoint.includes("?") ? "&" : "?";
-    const res = await fetch(`${API_BASE}${endpoint}${separator}page=${page}&page_size=${pageSize}`);
+    const res = await fetch(`${API_BASE}${endpoint}${separator}page=${page}&page_size=${pageSize}`, {
+      credentials: "include",
+      headers: getAuthHeaders(),
+    });
     if (!res.ok) {
       const errorData = await res.json().catch(() => ({}));
       throw new Error(errorData.error?.message || errorData.detail || `Server error: ${res.status}`);
@@ -38,9 +53,11 @@ async function fetchAllPages(endpoint, pageSize) {
 }
 
 export async function getModels() {
-  const res = await fetch(`${API_BASE}/models/`);
+  const res = await fetch(`${API_BASE}/models/`, {
+    credentials: "include",
+    headers: getAuthHeaders(),
+  });
   const data = await handleResponse(res);
-  // Return the original format {"ollama": [...], "llama_cpp": [...]}
   return data.models_by_provider || {};
 }
 
@@ -60,7 +77,8 @@ export async function sendChatStream(prompt, model, mode, conversationId, signal
 
   const res = await fetch(`${API_BASE}${endpoint}`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    headers: getAuthHeaders({ "Content-Type": "application/json" }),
     body: JSON.stringify(body),
     signal: signal,
   });
@@ -89,25 +107,22 @@ export async function* parseSSEStream(response) {
 
       buffer += decoder.decode(value, { stream: true });
       const lines = buffer.split("\n");
-      // Keep the last potentially incomplete line in the buffer
       buffer = lines.pop() || "";
 
       for (const line of lines) {
         const trimmed = line.trim();
         if (!trimmed || !trimmed.startsWith("data: ")) continue;
 
-        const jsonStr = trimmed.slice(6); // Remove "data: " prefix
+        const jsonStr = trimmed.slice(6);
         try {
           const parsed = JSON.parse(jsonStr);
           yield parsed;
         } catch {
-          // Skip malformed JSON lines
           continue;
         }
       }
     }
 
-    // Process any remaining data in buffer
     if (buffer.trim()) {
       const trimmed = buffer.trim();
       if (trimmed.startsWith("data: ")) {
@@ -128,8 +143,22 @@ export async function uploadFile(file, signal) {
   formData.append('file', file);
   const res = await fetch(`${API_BASE}/upload`, {
     method: 'POST',
+    credentials: "include",
+    headers: getAuthHeaders(),
     body: formData,
     signal: signal,
+  });
+  return await handleResponse(res);
+}
+
+export async function transcribeAudio(audioBlob, filename = "recording.webm") {
+  const formData = new FormData();
+  formData.append("file", audioBlob, filename);
+  const res = await fetch(`${API_BASE}/audio/transcribe`, {
+    method: "POST",
+    credentials: "include",
+    headers: getAuthHeaders(),
+    body: formData,
   });
   return await handleResponse(res);
 }
@@ -148,6 +177,8 @@ export async function deleteMessage(messageId, conversationId = null) {
     : `/messages/${messageId}`;
   const res = await fetch(`${API_BASE}${endpoint}`, {
     method: "DELETE",
+    credentials: "include",
+    headers: getAuthHeaders(),
   });
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({}));
@@ -159,7 +190,8 @@ export async function createNewConversation() {
   const endpoint = "/conversations";
   const res = await fetch(`${API_BASE}${endpoint}`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    headers: getAuthHeaders({ "Content-Type": "application/json" }),
     body: JSON.stringify({ title: "New Chat" }),
   });
   return await handleResponse(res);
@@ -169,7 +201,8 @@ export async function updateConversationTitle(conversationId, conversationTitle)
   const endpoint = `/conversations/${conversationId}`;
   const res = await fetch(`${API_BASE}${endpoint}`, {
     method: "PATCH",
-    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    headers: getAuthHeaders({ "Content-Type": "application/json" }),
     body: JSON.stringify({ title: conversationTitle }),
   });
   return await handleResponse(res);
@@ -178,6 +211,8 @@ export async function updateConversationTitle(conversationId, conversationTitle)
 export async function deleteConversation(conversationId) {
   const res = await fetch(`${API_BASE}/conversations/${conversationId}`, {
     method: "DELETE",
+    credentials: "include",
+    headers: getAuthHeaders(),
   });
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({}));
@@ -188,6 +223,8 @@ export async function deleteConversation(conversationId) {
 export async function rollbackConversation(conversationId) {
   const res = await fetch(`${API_BASE}/conversations/${conversationId}/rollback`, {
     method: "POST",
+    credentials: "include",
+    headers: getAuthHeaders(),
   });
   return await handleResponse(res);
 }
@@ -195,6 +232,8 @@ export async function rollbackConversation(conversationId) {
 export async function rollbackToMessage(conversationId, messageId) {
   const res = await fetch(`${API_BASE}/conversations/${conversationId}/rollback-to/${messageId}`, {
     method: "POST",
+    credentials: "include",
+    headers: getAuthHeaders(),
   });
   return await handleResponse(res);
 }
@@ -202,6 +241,8 @@ export async function rollbackToMessage(conversationId, messageId) {
 export async function clearAllConversations() {
   const res = await fetch(`${API_BASE}/conversations`, {
     method: "DELETE",
+    credentials: "include",
+    headers: getAuthHeaders(),
   });
   return await handleResponse(res);
 }
@@ -211,7 +252,8 @@ export async function generateImage(prompt, model, conversationId) {
   const effectiveModel = isGemini ? model : "x/flux2-klein";
   const res = await fetch(`${API_BASE}/generate-image`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    headers: getAuthHeaders({ "Content-Type": "application/json" }),
     body: JSON.stringify({ prompt, model: effectiveModel, conversation_id: conversationId }),
   });
   return await handleResponse(res);
@@ -220,17 +262,28 @@ export async function generateImage(prompt, model, conversationId) {
 export async function loginWithGoogleApi(authPayload) {
   const res = await fetch(`${API_BASE}/auth/google`, {
     method: "POST",
+    credentials: "include",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(authPayload),
   });
   return await handleResponse(res);
 }
 
-export async function getCurrentUserApi(token, email) {
-  const params = email ? `?email=${encodeURIComponent(email)}` : "";
-  const headers = {};
+export async function loginWithDemoApi(profileName = "alex") {
+  const res = await fetch(`${API_BASE}/auth/demo?profile=${encodeURIComponent(profileName)}`, {
+    method: "POST",
+    credentials: "include",
+  });
+  return await handleResponse(res);
+}
+
+export async function getCurrentUserApi(token) {
+  const headers = getAuthHeaders();
   if (token) headers["Authorization"] = `Bearer ${token}`;
-  const res = await fetch(`${API_BASE}/auth/me${params}`, { headers });
+  const res = await fetch(`${API_BASE}/auth/me`, {
+    credentials: "include",
+    headers,
+  });
   return await handleResponse(res);
 }
 
@@ -238,6 +291,8 @@ export async function logoutApi() {
   try {
     const res = await fetch(`${API_BASE}/auth/logout`, {
       method: "POST",
+      credentials: "include",
+      headers: getAuthHeaders(),
     });
     return await handleResponse(res);
   } catch (err) {
@@ -245,4 +300,3 @@ export async function logoutApi() {
     return { success: true };
   }
 }
-

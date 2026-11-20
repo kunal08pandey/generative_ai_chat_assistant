@@ -214,7 +214,7 @@ function ImageArtifact({ src, alt }) {
     try {
       const cleanName = (alt || "generated_image")
         .slice(0, 40)
-        .replace(/[^a-zA-Z0-9_\-]/g, "_")
+        .replace(/[^a-zA-Z0-9_-]/g, "_")
         .toLowerCase();
       if (src.startsWith("data:")) {
         const a = document.createElement("a");
@@ -309,6 +309,7 @@ export default function MessageBubble({
   role,
   text,
   attachments = [],
+  citations = [],
   isEditable = false,
   onEdit = null,
   onDelete = null,
@@ -538,7 +539,7 @@ export default function MessageBubble({
                   <ReactMarkdown
                     remarkPlugins={[remarkGfm]}
                     components={{
-                      img({ node, src, alt, ...props }) {
+                      img({ src, alt }) {
                         return <ImageArtifact src={src} alt={alt} />;
                       },
                       table({ children, ...props }) {
@@ -553,8 +554,9 @@ export default function MessageBubble({
                           <CodeBlock
                             language={lang}
                             value={rawCode}
-                            inline={inline}
+                            inline={Boolean(inline)}
                             meta={meta}
+                            {...props}
                           />
                         );
                       },
@@ -585,6 +587,31 @@ export default function MessageBubble({
                       <span>Retry</span>
                     </button>
                   )}
+                </div>
+              )}
+
+              {/* Structured Citations Section */}
+              {citations && citations.length > 0 && !isThinking && (
+                <div className="citations-container" aria-label="Referenced Sources">
+                  <div className="citations-header">
+                    <FileText size={13} className="citation-header-icon" />
+                    <span>Sources &amp; Citations ({citations.length})</span>
+                  </div>
+                  <div className="citations-grid">
+                    {citations.map((cite, idx) => (
+                      <div
+                        key={cite.doc_id ? `${cite.doc_id}-${cite.chunk}` : idx}
+                        className="citation-chip"
+                        title={cite.snippet || cite.source}
+                      >
+                        <span className="citation-chip-badge">[{cite.index || idx + 1}]</span>
+                        <span className="citation-chip-source">{cite.source}</span>
+                        {typeof cite.chunk === "number" && (
+                          <span className="citation-chip-chunk">chunk {cite.chunk}</span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
 
