@@ -67,6 +67,7 @@ export default function LoginScreen({ onLoginSuccess, darkMode, toggleDark }) {
 
             const profile = await userInfoRes.json();
             const authData = await loginWithGoogleApi({
+              access_token: tokenResponse.access_token,
               email: profile.email,
               name: profile.name || profile.given_name,
               picture: profile.picture,
