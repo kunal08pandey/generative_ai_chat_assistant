@@ -3,6 +3,7 @@ import { transcribeAudio } from "../api/client";
 import {
   formatSpeechTranscript,
   isAudioRecordingSupported,
+  isWhisperHallucination,
 } from "../utils/speechUtils";
 
 export function useSpeechRecognition({ onTranscript, disabled = false } = {}) {
@@ -18,10 +19,6 @@ export function useSpeechRecognition({ onTranscript, disabled = false } = {}) {
   const onTranscriptRef = useRef(onTranscript);
   const disabledRef = useRef(disabled);
   const canceledRef = useRef(false);
-  const recordingStartTimeRef = useRef(null);
-
-  // Minimum recording duration in ms to avoid Whisper hallucinations on silence
-  const MIN_RECORDING_MS = 1500;
 
   useEffect(() => {
     onTranscriptRef.current = onTranscript;
@@ -67,8 +64,10 @@ export function useSpeechRecognition({ onTranscript, disabled = false } = {}) {
         // ignore
       }
     }
-    cleanupStream();
-    setIsListening(false);
+    if (cancel) {
+      cleanupStream();
+      setIsListening(false);
+    }
   }, [cleanupStream]);
 
   useEffect(() => {
@@ -132,7 +131,6 @@ export function useSpeechRecognition({ onTranscript, disabled = false } = {}) {
       };
 
       mediaRecorder.onstart = () => {
-        recordingStartTimeRef.current = Date.now();
         setIsListening(true);
         clearSpeechError();
       };
@@ -146,23 +144,17 @@ export function useSpeechRecognition({ onTranscript, disabled = false } = {}) {
           return;
         }
 
-        // Check minimum recording duration to prevent Whisper hallucinations on silence
-        const recordingDuration = Date.now() - (recordingStartTimeRef.current || Date.now());
-        if (recordingDuration < MIN_RECORDING_MS) {
-          audioChunksRef.current = [];
-          showSpeechError("Recording too short. Hold the mic button and speak for at least 1–2 seconds.");
-          return;
-        }
-
         const chunks = audioChunksRef.current;
         audioChunksRef.current = [];
 
         if (!chunks || chunks.length === 0) {
+          showSpeechError("No audio recorded. Please try speaking again.");
           return;
         }
 
         const audioBlob = new Blob(chunks, { type: mimeType || "audio/webm" });
-        if (audioBlob.size < 200) {
+        if (audioBlob.size < 400) {
+          showSpeechError("Recording was too short. Please speak into your microphone and try again.");
           return;
         }
 
@@ -170,11 +162,13 @@ export function useSpeechRecognition({ onTranscript, disabled = false } = {}) {
         try {
           const res = await transcribeAudio(audioBlob, `speech.${ext}`);
           const text = (res?.text || res?.data?.text || "").trim();
-          if (text) {
-            const combined = formatSpeechTranscript(baseTextRef.current, text);
-            if (onTranscriptRef.current) {
-              onTranscriptRef.current(combined);
-            }
+          if (!text || isWhisperHallucination(text)) {
+            showSpeechError("No speech detected. Please check your microphone and speak clearly.");
+            return;
+          }
+          const combined = formatSpeechTranscript(baseTextRef.current, text);
+          if (onTranscriptRef.current) {
+            onTranscriptRef.current(combined);
           }
         } catch (err) {
           showSpeechError(err.message || "Failed to transcribe audio with Whisper.");

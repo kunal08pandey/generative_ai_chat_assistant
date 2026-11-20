@@ -9,6 +9,7 @@ import {
   isAudioRecordingSupported,
   isSpeechRecognitionSupported,
   getSpeechRecognitionConstructor,
+  isWhisperHallucination,
 } from "../src/utils/speechUtils.js";
 
 test("formatSpeechTranscript: correctly appends recognized speech to empty and existing text", () => {
@@ -440,4 +441,22 @@ test("Groq Whisper complete flow: Record audio -> Stop -> Transcribe -> Append t
   assert.equal(messages.length, 1);
   assert.equal(messages[0].content, "Please create a dashboard for cloud metrics");
   assert.equal(currentChatInput, "");
+});
+
+test("isWhisperHallucination: detects silence and background noise hallucinations", () => {
+  // Common silence hallucinations
+  assert.equal(isWhisperHallucination("Thank you."), true);
+  assert.equal(isWhisperHallucination("Thank you!"), true);
+  assert.equal(isWhisperHallucination("thank you"), true);
+  assert.equal(isWhisperHallucination("Thanks for watching."), true);
+  assert.equal(isWhisperHallucination("Thank you for watching!"), true);
+  assert.equal(isWhisperHallucination("Subtitles by the Amara.org community"), true);
+  assert.equal(isWhisperHallucination("Bye."), true);
+  assert.equal(isWhisperHallucination(""), true);
+  assert.equal(isWhisperHallucination(null), true);
+
+  // Real user prompts should NOT be flagged
+  assert.equal(isWhisperHallucination("Explain quantum computing"), false);
+  assert.equal(isWhisperHallucination("Thank you for helping me write this code"), false);
+  assert.equal(isWhisperHallucination("Hello world"), false);
 });

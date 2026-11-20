@@ -5,6 +5,34 @@
  * and friendly error mapping.
  */
 
+export const WHISPER_HALLUCINATIONS = new Set([
+  "thank you",
+  "thank you very much",
+  "thanks for watching",
+  "thank you for watching",
+  "please subscribe",
+  "subscribe to my channel",
+  "subtitles by",
+  "bye",
+  "bye bye",
+  "goodbye",
+  "you",
+]);
+
+/**
+ * Detect Whisper hallucination phrases on silence or ambient noise.
+ */
+export function isWhisperHallucination(text = "") {
+  if (!text || !text.trim()) return true;
+  const clean = text
+    .toLowerCase()
+    .replace(/[.!?,:;~_"'()[\]]/g, "")
+    .trim();
+  if (WHISPER_HALLUCINATIONS.has(clean)) return true;
+  if (clean.startsWith("subtitles by")) return true;
+  return false;
+}
+
 /**
  * Check if the browser supports standard audio recording (MediaRecorder).
  */
