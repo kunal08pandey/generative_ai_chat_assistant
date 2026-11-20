@@ -18,6 +18,10 @@ export function useSpeechRecognition({ onTranscript, disabled = false } = {}) {
   const onTranscriptRef = useRef(onTranscript);
   const disabledRef = useRef(disabled);
   const canceledRef = useRef(false);
+  const recordingStartTimeRef = useRef(null);
+
+  // Minimum recording duration in ms to avoid Whisper hallucinations on silence
+  const MIN_RECORDING_MS = 1500;
 
   useEffect(() => {
     onTranscriptRef.current = onTranscript;
@@ -128,6 +132,7 @@ export function useSpeechRecognition({ onTranscript, disabled = false } = {}) {
       };
 
       mediaRecorder.onstart = () => {
+        recordingStartTimeRef.current = Date.now();
         setIsListening(true);
         clearSpeechError();
       };
@@ -138,6 +143,14 @@ export function useSpeechRecognition({ onTranscript, disabled = false } = {}) {
 
         if (canceledRef.current) {
           audioChunksRef.current = [];
+          return;
+        }
+
+        // Check minimum recording duration to prevent Whisper hallucinations on silence
+        const recordingDuration = Date.now() - (recordingStartTimeRef.current || Date.now());
+        if (recordingDuration < MIN_RECORDING_MS) {
+          audioChunksRef.current = [];
+          showSpeechError("Recording too short. Hold the mic button and speak for at least 1–2 seconds.");
           return;
         }
 
